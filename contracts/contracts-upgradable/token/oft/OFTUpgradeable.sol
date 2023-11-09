@@ -3,7 +3,7 @@
 pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "./IOFTUpgradeable.sol";
 import "./OFTCoreUpgradeable.sol";
 
@@ -11,14 +11,14 @@ import "./OFTCoreUpgradeable.sol";
 contract OFTUpgradeable is Initializable, OFTCoreUpgradeable, ERC20Upgradeable, IOFTUpgradeable {
     function __OFTUpgradeable_init(string memory _name, string memory _symbol, address _lzEndpoint) internal onlyInitializing {
         __ERC20_init_unchained(_name, _symbol);
-        __Ownable_init_unchained();
+        __Ownable_init_unchained(msg.sender);
         __LzAppUpgradeable_init_unchained(_lzEndpoint);
     }
 
     function __OFTUpgradeable_init_unchained(string memory _name, string memory _symbol, address _lzEndpoint) internal onlyInitializing {}
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(OFTCoreUpgradeable, IERC165Upgradeable) returns (bool) {
-        return interfaceId == type(IOFTUpgradeable).interfaceId || interfaceId == type(IERC20Upgradeable).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId) public view virtual override(OFTCoreUpgradeable, IERC165) returns (bool) {
+        return interfaceId == type(IOFTUpgradeable).interfaceId || interfaceId == type(IERC20).interfaceId || super.supportsInterface(interfaceId);
     }
 
     function token() public view virtual override returns (address) {
@@ -41,10 +41,4 @@ contract OFTUpgradeable is Initializable, OFTCoreUpgradeable, ERC20Upgradeable, 
         return _amount;
     }
 
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint[50] private __gap;
 }

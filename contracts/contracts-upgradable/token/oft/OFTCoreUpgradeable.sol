@@ -9,28 +9,45 @@ import "../../lzApp/NonblockingLzAppUpgradeable.sol";
 abstract contract OFTCoreUpgradeable is Initializable, NonblockingLzAppUpgradeable, ERC165Upgradeable, IOFTCoreUpgradeable {
     using BytesLib for bytes;
 
+    /// @custom:storage-location erc7201:lze.storage.OFTCore
+    struct OFTCoreStorage {
+        bool useCustomAdapterParams;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("lze.storage.OFTCore")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant OFTCoreStorageLocation = 0x817ce5a4936f6ed630476e815862187f1e9a25aa3e42f647d7db203845e01200;
+
+    function _getOFTCoreStorage() private pure returns (OFTCoreStorage storage $) {
+        assembly {
+            $.slot := OFTCoreStorageLocation
+        }
+    }
+
     uint public constant NO_EXTRA_GAS = 0;
 
     // packet type
     uint16 public constant PT_SEND = 0;
 
-    bool public useCustomAdapterParams;
-
     function __OFTCoreUpgradeable_init(address _lzEndpoint) internal onlyInitializing {
-        __Ownable_init_unchained();
+        __Ownable_init_unchained(msg.sender);
         __LzAppUpgradeable_init_unchained(_lzEndpoint);
     }
 
     function __OFTCoreUpgradeable_init_unchained() internal onlyInitializing {}
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165Upgradeable, IERC165Upgradeable) returns (bool) {
+    function useCustomAdapterParams() public view returns (bool) {
+        OFTCoreStorage storage $ = _getOFTCoreStorage();
+        return $.useCustomAdapterParams;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165Upgradeable, IERC165) returns (bool) {
         return interfaceId == type(IOFTCoreUpgradeable).interfaceId || super.supportsInterface(interfaceId);
     }
 
     function estimateSendFee(uint16 _dstChainId, bytes calldata _toAddress, uint _amount, bool _useZro, bytes calldata _adapterParams) public view virtual override returns (uint nativeFee, uint zroFee) {
         // mock the payload for sendFrom()
         bytes memory payload = abi.encode(PT_SEND, _toAddress, _amount);
-        return lzEndpoint.estimateFees(_dstChainId, address(this), payload, _useZro, _adapterParams);
+        return lzEndpoint().estimateFees(_dstChainId, address(this), payload, _useZro, _adapterParams);
     }
 
     function sendFrom(address _from, uint16 _dstChainId, bytes calldata _toAddress, uint _amount, address payable _refundAddress, address _zroPaymentAddress, bytes calldata _adapterParams) public payable virtual override {
@@ -38,7 +55,8 @@ abstract contract OFTCoreUpgradeable is Initializable, NonblockingLzAppUpgradeab
     }
 
     function setUseCustomAdapterParams(bool _useCustomAdapterParams) public virtual onlyOwner {
-        useCustomAdapterParams = _useCustomAdapterParams;
+        OFTCoreStorage storage $ = _getOFTCoreStorage();
+        $.useCustomAdapterParams = _useCustomAdapterParams;
         emit SetUseCustomAdapterParams(_useCustomAdapterParams);
     }
 
@@ -76,7 +94,7 @@ abstract contract OFTCoreUpgradeable is Initializable, NonblockingLzAppUpgradeab
     }
 
     function _checkAdapterParams(uint16 _dstChainId, uint16 _pkType, bytes memory _adapterParams, uint _extraGas) internal virtual {
-        if (useCustomAdapterParams) {
+        if (useCustomAdapterParams()) {
             _checkGasLimit(_dstChainId, _pkType, _adapterParams, _extraGas);
         } else {
             require(_adapterParams.length == 0, "OFTCore: _adapterParams must be empty.");
@@ -87,10 +105,4 @@ abstract contract OFTCoreUpgradeable is Initializable, NonblockingLzAppUpgradeab
 
     function _creditTo(uint16 _srcChainId, address _toAddress, uint _amount) internal virtual returns(uint);
 
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint[49] private __gap;
 }
